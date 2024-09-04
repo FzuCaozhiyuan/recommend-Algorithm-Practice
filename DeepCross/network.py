@@ -13,6 +13,8 @@ class Deep(nn.Module):
             deep_ayer_list.append(nn.BatchNorm1d(layer[1], affine=False))
             deep_ayer_list.append(nn.ReLU(inplace=True))
         self._deep = nn.Sequential(*deep_ayer_list)
+        # *deep_ayer_list 是 Python 的解包操作符，它将 deep_ayer_list 列表
+        # 中的所有元素作为独立的参数传递给 nn.Sequential 构造函数
 
     def forward(self, x):
         out = self._deep(x)
@@ -30,17 +32,20 @@ class Cross(nn.Module):
         weight_b = []
         batchnorm = []
         for i in range(num_cross_layers):
+            # 创建一个形状为 (input_dim) 的张量，并用正态分布初始化它的值。然后，这个张量被包装成一个 nn.Parameter 对象，
+            # 并添加到 weight_w 列表中。nn.Parameter 使得这个张量可以作为模型的一个参数进行训练
             weight_w.append(nn.Parameter(torch.nn.init.normal_(torch.empty(input_dim))))
             weight_b.append(nn.Parameter(torch.nn.init.normal_(torch.empty(input_dim))))
-            batchnorm.append(nn.BatchNorm1d(input_dim, affine=False))
-
+            batchnorm.append(nn.BatchNorm1d(input_dim, affine=False))  # 创建一个批量归一化层 nn.BatchNorm1d并且特征维度是 input_dim
+        # 将 weight_w 列表转换为 nn.ParameterList，这样 PyTorch 就会知道这些是模型的参数，
+        # 并在训练过程中对它们进行优化
         self.weight_w = nn.ParameterList(weight_w)
         self.weight_b = nn.ParameterList(weight_b)
         self.bn = nn.ModuleList(batchnorm)
 
     def forward(self, x):
         out = x
-        x = x.reshape(x.shape[0], -1, 1)
+        x = x.reshape(x.shape[0], -1, 1)  # shape[0]是batch
         for i in range(self.num_cross_layers):
             # this compute mode is time-consuming.
             # out = torch.matmul(torch.bmm(x, torch.transpose(out.reshape(out.shape[0], -1, 1), 1, 2)), self.weight_w[i]) + self.weight_b[i] + out
@@ -63,7 +68,8 @@ class DeepCross(BaseModel):
 
         # For categorical features, we embed the features in dense vectors of dimension of 6 * category cardinality^1/4
         # calculate all the embedding dimension of all the sparse features
-        self.embedding_dims = list(map(lambda x: int(6 * pow(x, 0.25)), sparse_features_cols))
+        self.embedding_dims = list(map(lambda x: int(6 * pow(x, 0.25)), sparse_features_cols))  ## 经典lambda配map映射
+        # 对sparse_features_cols的每个元素x计算6 * pow(x, 0.25)再转成整数
         # create embedding layers for all the sparse features
         self.embedding_layers = nn.ModuleList([
             nn.Embedding(num_embeddings=e[0], embedding_dim=e[1], scale_grad_by_freq=True) for e in list(zip(sparse_features_cols, self.embedding_dims))

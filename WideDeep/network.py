@@ -14,6 +14,7 @@ class Deep(nn.Module):
     def __init__(self, config, hidden_layers):
         super(Deep, self).__init__()
         self.dnn = nn.ModuleList([nn.Linear(layer[0], layer[1]) for layer in list(zip(hidden_layers[:-1], hidden_layers[1:]))])
+        #打包layers 01,12,23,...-1代表最后一个元素;hidden_layers是[256, 128, 64]，那么zip会生成[(256, 128), (128, 64)]
         self.dropout = nn.Dropout(p=config['deep_dropout'])
 
     def forward(self, x):
@@ -29,19 +30,21 @@ class WideDeep(nn.Module):
         super(WideDeep, self).__init__()
         self._config = config
         # 稠密特征的数量
-        self._num_of_dense_feature = dense_features_cols.__len__()
+        self._num_of_dense_feature = dense_features_cols.__len__()  # 在一个对象上调用内置的 len() 函数
         # 稠密特征
         self.sparse_features_cols = sparse_features_cols
 
         self.embedding_layers = nn.ModuleList([
             # 根据稀疏特征的个数创建对应个数的Embedding层，Embedding输入大小是稀疏特征的类别总数，输出稠密向量的维度由config文件配置
             nn.Embedding(num_embeddings = num_feat, embedding_dim=config['embed_dim'])
-                for num_feat in self.sparse_features_cols
+                for num_feat in self.sparse_features_cols  
+                # 一个组合特征包含num_feat个特征，参考文档图片中系数特征User Demographics生成的embeddings是复数
         ])
 
         # Deep hidden layers
         self._deep_hidden_layers = config['hidden_layers']
         self._deep_hidden_layers.insert(0, self._num_of_dense_feature + config['embed_dim'] * len(self.sparse_features_cols))
+        # 若有1200个维度，则hidden_layers变成[1200, 256, 128, 64]
 
         self._wide = Wide(self._num_of_dense_feature)
         self._deep = Deep(config, self._deep_hidden_layers)
@@ -52,12 +55,13 @@ class WideDeep(nn.Module):
     def forward(self, x):
         # 先区分出稀疏特征和稠密特征，这里是按照列来划分的，即所有的行都要进行筛选
         dense_input, sparse_inputs = x[:, :self._num_of_dense_feature], x[:, self._num_of_dense_feature:]
-        sparse_inputs = sparse_inputs.long()
+        sparse_inputs = sparse_inputs.long()  # 将张量转换为LongTensor类型才能作为Embedding的输入
 
-        sparse_embeds = [self.embedding_layers[i](sparse_inputs[:, i]) for i in range(sparse_inputs.shape[1])]
+        sparse_embeds = [self.embedding_layers[i](sparse_inputs[:, i]) for i in range(sparse_inputs.shape[1])] # shape[1]是数组列数
+        # 将每一列组合特征嵌入对应的nn.Embedding中
         sparse_embeds = torch.cat(sparse_embeds, axis=-1)
         # Deep模块的输入是稠密特征和稀疏特征经过Embedding产生的稠密特征的
-        deep_input = torch.cat([sparse_embeds, dense_input], axis=-1)
+        deep_input = torch.cat([sparse_embeds, dense_input], axis=-1)  # 按最后一个维度拼接
 
         wide_out = self._wide(dense_input)
         deep_out = self._deep(deep_input)
@@ -69,7 +73,7 @@ class WideDeep(nn.Module):
         return outputs
 
     def saveModel(self):
-        torch.save(self.state_dict(), self._config['model_name'])
+        torch.save(self.state_dict(), self._config['model_name'])  # 通用写法
 
     def loadModel(self, map_location):
         state_dict = torch.load(self._config['model_name'], map_location=map_location)

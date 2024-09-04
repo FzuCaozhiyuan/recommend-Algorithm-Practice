@@ -26,7 +26,7 @@ class Trainer(object):
         loss.backward()
         self._optimizer.step()
 
-        loss = loss.item()
+        loss = loss.item()  # 把数字从tensor中取出
         return loss, y_predict
 
     def _train_an_epoch(self, train_loader, epoch_id):
@@ -39,7 +39,7 @@ class Trainer(object):
         total = 0
         # 从DataLoader中获取小批量的id以及数据
         for batch_id, (x, labels) in enumerate(train_loader):
-            x = Variable(x)
+            x = Variable(x)   # 现在写成x = torch.tensor(x, requires_grad=True)
             labels = Variable(labels)
             if self._config['use_cuda'] is True:
                 x, labels = x.cuda(), labels.cuda()
