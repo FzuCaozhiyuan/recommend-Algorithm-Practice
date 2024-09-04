@@ -73,7 +73,7 @@ class DeepCross(BaseModel):
         # create embedding layers for all the sparse features
         self.embedding_layers = nn.ModuleList([
             nn.Embedding(num_embeddings=e[0], embedding_dim=e[1], scale_grad_by_freq=True) for e in list(zip(sparse_features_cols, self.embedding_dims))
-        ])
+        ])  # 稀疏特征是类别特征，因此num_embeddings直接取稀疏特征类别数，代表空间内向量词典的“词汇量”
 
         self._input_dim = self._num_of_dense_feature + sum(self.embedding_dims)
 
